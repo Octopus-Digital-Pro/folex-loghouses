@@ -2,19 +2,21 @@ import mdx from "@astrojs/mdx";
 import react from "@astrojs/react";
 import sitemap from "@astrojs/sitemap";
 import tailwindcss from "@tailwindcss/vite";
-import { defineConfig } from "astro/config";
+import {defineConfig} from "astro/config";
 import rehypeExternalLinks from "rehype-external-links";
 import remarkParseContent from "./src/lib/utils/remarkParseContent.ts";
-import config from ".astro/config.generated.json" with { type: "json" };
+import config from ".astro/config.generated.json" with {type: "json"};
 import fontsJson from "./src/config/fonts.json";
-import { generateAstroFontsConfig } from "./src/lib/utils/AstroFont.ts";
-import { enabledLanguages } from "./src/lib/utils/i18nUtils.ts";
+import {generateAstroFontsConfig} from "./src/lib/utils/AstroFont.ts";
+import {enabledLanguages} from "./src/lib/utils/i18nUtils.ts";
+
+import sanity from "@sanity/astro";
 
 const fonts = generateAstroFontsConfig(fontsJson);
 let {
-  seo: { sitemap: sitemapConfig },
+  seo: {sitemap: sitemapConfig},
   settings: {
-    multilingual: { showDefaultLangInUrl, defaultLanguage },
+    multilingual: {showDefaultLangInUrl, defaultLanguage},
   },
 } = config;
 
@@ -35,7 +37,17 @@ export default defineConfig({
       prefixDefaultLocale: showDefaultLangInUrl,
     },
   },
-  integrations: [react(), sitemapConfig.enable ? sitemap() : null, mdx()],
+  integrations: [
+    react(),
+    sitemapConfig.enable ? sitemap() : null,
+    mdx(),
+    sanity({
+      projectId: process.env.SANITY_PROJECT_ID,
+      dataset: process.env.SANITY_DATASET,
+      apiVersion: process.env.SANITY_API_VERSION,
+      useCdn: true, // great for public content
+    }),
+  ],
   markdown: {
     rehypePlugins: [
       [

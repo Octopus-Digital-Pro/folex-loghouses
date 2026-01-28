@@ -1,0 +1,90 @@
+{
+  "site": {
+    "title": "Folex",
+    "description": "A highly customizable creative agency business theme built with Tailwind CSS and Astro Js",
+    "tagline": "Creative Agency & Personal Portfolio Business Theme",
+    "taglineSeparator": "",
+    "baseUrl": "https://folex-lite-astro.vercel.app/",
+    "logo": "/images/logo.svg",
+    "logoAlternate": "/images/logo-light.svg",
+    "logoText": "",
+    "logoWidth": "86px",
+    "logoHeight": "24px",
+    "trailingSlash": true,
+    "favicon": {
+      "path": "/images/favicons",
+      "image": "/images/favicon.png"
+    }
+  },
+  "seo": {
+    "author": "Getastrothemes",
+    "keywords": [
+      "free digital agency",
+      "free astro template",
+      "free astro theme",
+      "free astro agency template",
+      "free astro agency theme"
+    ],
+    "robots": "index, follow",
+    "robotsTxt": {
+      "enable": true,
+      "disallow": [
+        "/_astro/",
+        "/cdn-cgi/"
+      ]
+    },
+    "sitemap": {
+      "enable": true,
+      "exclude": []
+    }
+  },
+  "settings": {
+    "blogFolder": "blog",
+    "servicesFolder": "services",
+    "portfolioFolder": "portfolio",
+    "stickyHeader": true,
+    "contactFormAction": "https://formsubmit.co/your_email@example.com",
+    "contactFormProvider": "formsubmit.co",
+    "footerDescription": "",
+    "copyright": {
+      "enable": true,
+      "text": ""
+    },
+    "multilingual": {
+      "enable": true,
+      "defaultLanguage": "en",
+      "disableLanguages": [],
+      "showDefaultLangInUrl": false
+    },
+    "contactInfo": {
+      "address": "27 Division St, New York, <br /> NY 10002, USA",
+      "email": "[folex.agency@mail.com](mailto:folex.agency@mail.com)",
+      "phone": "[+1 800 123 654 987](tel:+1800123654987)"
+    },
+    "headerOffcanvas": {
+      "enable": true,
+      "logo": "/images/logo-light.svg",
+      "description": "",
+      "button": {
+        "enable": true,
+        "label": "",
+        "url": "/"
+      }
+    },
+    "navigationButton": {
+      "enable": true,
+      "label": "",
+      "url": "/"
+    }
+  },
+  "opengraph": {
+    "image": "/images/og-image.jpg",
+    "ogLocale": "en_US",
+    "ogType": "website",
+    "twitter": "",
+    "twitterCard": "summary_large_image"
+  },
+  "head": {
+    "content": "  <script defer async src=\"/umami.is.js\" data-website-id=\"\"></script>\n  "
+  }
+}

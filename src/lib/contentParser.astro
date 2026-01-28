@@ -1,59 +1,49 @@
 ---
 import config from ".astro/config.generated.json" with { type: "json" };
 import languages from "@/config/language.json";
-import {
-  getCollection,
-  type CollectionEntry,
-  type CollectionKey,
-} from "astro:content";
+import { createClient } from "@sanity/client";
 
-export const getCollectionCTM = async <C extends CollectionKey>(
-  collectionName: C,
-  lang: string | undefined,
-): Promise<CollectionEntry<C>[]> => {
-  const { defaultLanguage } = config.settings.multilingual;
-
-  const selectedLanguageCode = lang || defaultLanguage;
-
-  const language = languages.find(
-    (l: any) => l.languageCode == selectedLanguageCode,
-  );
-
-  if (!language) {
-    throw new Error("Language not found");
-  }
-
-  const { contentDir } = language;
-
-  const pages: CollectionEntry<C>[] = (await getCollection(
-    collectionName as any,
-    (item: any) => {
-      return item.id.startsWith(contentDir) && !item.id.includes("-index");
-    },
-  )) as CollectionEntry<C>[];
-
-  // Prevent generation of pages with `draft: true` in production
-  let cleaned = import.meta.env.PROD
-    ? pages.filter((page) => !page.data.draft)
-    : pages;
-
-  // Sort by weight if present
-  cleaned = cleaned.sort((a, b) => {
-    const wa = a.data.weight ?? Infinity;
-    const wb = b.data.weight ?? Infinity;
-    return wa - wb;
-  });
-
-  return cleaned;
+/**
+ * Minimal "CollectionEntry-like" shape so the rest of your app
+ * can keep doing page?.data, page.id, etc.
+ */
+export type CTMEntry<TData = any> = {
+  id: string;
+  slug?: string;
+  data: TData;
 };
 
-export const getEntryCTM = async <C extends CollectionKey>(
-  collectionName: C,
-  subCollectionName: string,
-  lang?: string, // Optional, defaults to undefined
-): Promise<CollectionEntry<C>> => {
-  const { defaultLanguage } = config.settings.multilingual;
+/**
+ * Sanity client (server-side; safe to use in Astro frontmatter).
+ *
+ * Required in .env (project root):
+ *  - PUBLIC_SANITY_PROJECT_ID
+ *  - PUBLIC_SANITY_DATASET
+ * Optional:
+ *  - PUBLIC_SANITY_API_VERSION (defaults to "2025-01-01")
+ */
+const projectId = import.meta.env.PUBLIC_SANITY_PROJECT_ID;
+const dataset = import.meta.env.PUBLIC_SANITY_DATASET;
+const apiVersion = import.meta.env.PUBLIC_SANITY_API_VERSION ?? "2025-01-01";
 
+if (!projectId || !dataset) {
+  throw new Error(
+    "Missing Sanity env vars. Please define PUBLIC_SANITY_PROJECT_ID and PUBLIC_SANITY_DATASET in your .env file (then restart astro dev).",
+  );
+}
+
+const sanity = createClient({
+  projectId,
+  dataset,
+  apiVersion,
+  useCdn: import.meta.env.PROD, // CDN in prod, fresh in dev
+});
+
+/**
+ * Helper: resolve language code the same way you used to.
+ */
+function resolveLanguageCode(lang?: string) {
+  const { defaultLanguage } = config.settings.multilingual;
   const selectedLanguageCode = lang || defaultLanguage;
 
   const language = languages.find(
@@ -64,18 +54,126 @@ export const getEntryCTM = async <C extends CollectionKey>(
     throw new Error(`Language '${selectedLanguageCode}' not found.`);
   }
 
-  const contentDir = language.contentDir;
-  const path = subCollectionName
-    ? `${contentDir}/${subCollectionName}`
-    : contentDir;
+  return selectedLanguageCode;
+}
 
-  const entries = await getCollection(collectionName, ({ id }: any) => {
-    // Remove extension like .md or .mdx
-    const extensionExcluded = id.replace(/\.mdx?$/, "");
+/**
+ * Helper: exclude drafts in production
+ * - Sanity drafts live under drafts.**
+ */
+function draftsFilterGROQ() {
+  return import.meta.env.PROD ? `&& !(_id in path("drafts.**"))` : "";
+}
 
-    return extensionExcluded === path;
+/**
+ * Fetch collection (list) of docs of a given Sanity _type, filtered by language.
+ * Keeps similar behavior to your old astro:content version:
+ *  - excludes "-index" items by slug convention
+ *  - excludes doc.data.draft in production (if you use a `draft` boolean)
+ *  - excludes Sanity draft IDs in production
+ *  - sorts by `weight` if present
+ */
+export const getCollectionCTM = async <C extends string>(
+  collectionName: C,
+  lang: string | undefined,
+): Promise<CTMEntry[]> => {
+  const selectedLanguageCode = resolveLanguageCode(lang);
+
+  const query = `
+    *[
+      _type == $type
+      && language == $lang
+      ${draftsFilterGROQ()}
+    ]{
+      _id,
+      "slug": slug.current,
+      ...
+    }
+  `;
+
+  const docs = await sanity.fetch<any[]>(query, {
+    type: collectionName,
+    lang: selectedLanguageCode,
   });
 
-  return entries && (entries[0] as CollectionEntry<C>);
+  // Filter out "-index" docs by slug convention (e.g., "homepage-index")
+  const pages = (docs ?? []).filter((doc) => {
+    const slug = doc?.slug;
+    return typeof slug === "string" ? !slug.includes("-index") : true;
+  });
+
+  // Prevent generation of pages with `draft: true` in production (your old behavior)
+  let cleaned = import.meta.env.PROD ? pages.filter((p) => !p.draft) : pages;
+
+  // Sort by weight if present
+  cleaned = cleaned.sort((a, b) => {
+    const wa = a.weight ?? Infinity;
+    const wb = b.weight ?? Infinity;
+    return wa - wb;
+  });
+
+  return cleaned.map((doc) => ({
+    id: doc._id,
+    slug: doc.slug,
+    data: doc,
+  }));
+};
+
+/**
+ * Fetch a single entry by type + subCollectionName + language.
+ *
+ * Your current call pattern:
+ *   getEntryCTM("homepage", "-index", Astro.currentLocale)
+ *
+ * This maps to slug:
+ *   "homepage-index"
+ *
+ * If you later want to fetch by a normal slug, you can pass it as:
+ *   getEntryCTM("page", "about", "en")
+ */
+export const getEntryCTM = async <C extends string>(
+  collectionName: C,
+  subCollectionName: string,
+  lang?: string,
+): Promise<CTMEntry | null> => {
+  const selectedLanguageCode = resolveLanguageCode(lang);
+
+  const normalizedSub = (subCollectionName ?? "").trim();
+
+  // Map your old convention to a Sanity slug
+  // "-index" => `${type}-index`
+  const slug = normalizedSub.startsWith("-")
+    ? `${collectionName}${normalizedSub}`
+    : normalizedSub.replace(/^\//, "");
+
+  const query = `
+    *[
+      _type == $type
+      && language == $lang
+      && slug.current == $slug
+      ${draftsFilterGROQ()}
+    ][0]{
+      _id,
+      "slug": slug.current,
+      ...
+    }
+  `;
+
+  const doc = await sanity.fetch<any | null>(query, {
+    type: collectionName,
+    lang: selectedLanguageCode,
+    slug,
+  });
+
+  if (!doc) return null;
+
+  // Optional: keep your old "draft flag" behavior too
+  if (import.meta.env.PROD && doc.draft) return null;
+
+  return {
+    id: doc._id,
+    slug: doc.slug,
+    data: doc,
+  };
 };
 ---
