@@ -19,17 +19,19 @@ type Props = {
   content?: ServicesInterface;
 };
 
-// Fetching the default content for the this section
-let defaultContent = (
-  await getEntryCTM("sections", "services-section", Astro.currentLocale)
-)?.data as ServicesInterface;
+// Fetching the default content for this section (may be missing in Sanity initially)
+let defaultContent = ((await getEntryCTM(
+  "sections",
+  "services-section",
+  Astro.currentLocale,
+))?.data || {}) as ServicesInterface;
 
 // Enables content customization (e.g., title, description) with a fallback to 'defaultContent' if not provided.
 // The 'content' prop should match the structure of 'defaultContent'.
 // Allows using this section with different content across multiple pages.
 // If 'content' is missing, 'defaultContent' will be used.
 let actualContent = overrideObjects(
-  defaultContent,
+  { ...(defaultContent || {}) },
   Astro.props.content,
 ) as ServicesInterface;
 

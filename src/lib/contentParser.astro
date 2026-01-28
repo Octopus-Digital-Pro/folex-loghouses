@@ -1,7 +1,7 @@
 ---
 import config from ".astro/config.generated.json" with { type: "json" };
 import languages from "@/config/language.json";
-import { createClient } from "@sanity/client";
+import { sanity } from "@/lib/sanityClient";
 
 /**
  * Minimal "CollectionEntry-like" shape so the rest of your app
@@ -12,58 +12,6 @@ export type CTMEntry<TData = any> = {
   slug?: string;
   data: TData;
 };
-
-/**
- * Sanity client (server-side; safe to use in Astro frontmatter).
- *
- * Required in .env (project root):
- *  - PUBLIC_SANITY_PROJECT_ID
- *  - PUBLIC_SANITY_DATASET
- * Optional:
- *  - PUBLIC_SANITY_API_VERSION (defaults to "2025-01-01")
- */
-const projectId = import.meta.env.PUBLIC_SANITY_PROJECT_ID;
-const dataset = import.meta.env.PUBLIC_SANITY_DATASET;
-const apiVersion = import.meta.env.PUBLIC_SANITY_API_VERSION ?? "2025-01-01";
-
-if (!projectId || !dataset) {
-  throw new Error(
-    "Missing Sanity env vars. Please define PUBLIC_SANITY_PROJECT_ID and PUBLIC_SANITY_DATASET in your .env file (then restart astro dev).",
-  );
-}
-
-const sanity = createClient({
-  projectId,
-  dataset,
-  apiVersion,
-  useCdn: import.meta.env.PROD, // CDN in prod, fresh in dev
-});
-
-/**
- * Helper: resolve language code the same way you used to.
- */
-function resolveLanguageCode(lang?: string) {
-  const { defaultLanguage } = config.settings.multilingual;
-  const selectedLanguageCode = lang || defaultLanguage;
-
-  const language = languages.find(
-    (l: any) => l.languageCode === selectedLanguageCode,
-  );
-
-  if (!language) {
-    throw new Error(`Language '${selectedLanguageCode}' not found.`);
-  }
-
-  return selectedLanguageCode;
-}
-
-/**
- * Helper: exclude drafts in production
- * - Sanity drafts live under drafts.**
- */
-function draftsFilterGROQ() {
-  return import.meta.env.PROD ? `&& !(_id in path("drafts.**"))` : "";
-}
 
 /**
  * Fetch collection (list) of docs of a given Sanity _type, filtered by language.
@@ -77,13 +25,14 @@ export const getCollectionCTM = async <C extends string>(
   collectionName: C,
   lang: string | undefined,
 ): Promise<CTMEntry[]> => {
-  const selectedLanguageCode = resolveLanguageCode(lang);
+  const { defaultLanguage } = config.settings.multilingual;
+  const selectedLanguageCode = lang || defaultLanguage;
 
   const query = `
     *[
       _type == $type
       && language == $lang
-      ${draftsFilterGROQ()}
+      ${import.meta.env.PROD ? '&& !(_id in path("drafts.**"))' : ""}
     ]{
       _id,
       "slug": slug.current,
@@ -136,7 +85,8 @@ export const getEntryCTM = async <C extends string>(
   subCollectionName: string,
   lang?: string,
 ): Promise<CTMEntry | null> => {
-  const selectedLanguageCode = resolveLanguageCode(lang);
+  const { defaultLanguage } = config.settings.multilingual;
+  const selectedLanguageCode = lang || defaultLanguage;
 
   const normalizedSub = (subCollectionName ?? "").trim();
 
@@ -151,7 +101,7 @@ export const getEntryCTM = async <C extends string>(
       _type == $type
       && language == $lang
       && slug.current == $slug
-      ${draftsFilterGROQ()}
+      ${import.meta.env.PROD ? '&& !(_id in path("drafts.**"))' : ""}
     ][0]{
       _id,
       "slug": slug.current,

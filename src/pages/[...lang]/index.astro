@@ -1,7 +1,8 @@
 ---
 import Base from "@/layouts/Base.astro";
 import { generatePaths } from "@/lib/utils/i18nUtils";
-import { getEntryCTM } from "@/lib/contentParser.astro";
+import { sanity } from "@/lib/sanityClient";
+import { urlFor } from "@/lib/sanityImage";
 
 import Clients from "@/components/sections/Clients.astro";
 import BannerAgencyStartup from "@/components/sections/Banner.astro";
@@ -13,13 +14,120 @@ export function getStaticPaths() {
   return generatePaths();
 }
 
-// Sanity: _type is "homePage", slug.current is "/"
-const page = await getEntryCTM("homePage", "/", Astro.currentLocale);
+// Fetch home page from Sanity
+const page = await sanity.fetch(
+  `*[_type == "homePage" && slug.current == $slug][0]`,
+  { slug: "/" },
+);
+
+const hero =
+  page?.sections?.find((section: any) => section._type === "hero") ?? null;
+
+const infoBlock =
+  page?.sections?.find((section: any) => section._type === "infoBlock") ?? null;
 
 ---
 
-<Base {...page?.data} headerPosition="fixed" hasHeaderDarkBackground={true}>
-  <BannerAgencyStartup />
+<Base {...(page || {})} headerPosition="fixed" hasHeaderDarkBackground={true}>
+  {
+    hero && (
+      <section class="bg-black text-white">
+        <div class="container mx-auto px-4 py-24 md:py-32">
+          <div class="grid items-center gap-10 md:grid-cols-2">
+            <div class="space-y-6">
+              {
+                (hero.preTitle || hero.title) && (
+                  <h1 class="text-4xl font-bold leading-tight md:text-5xl lg:text-6xl">
+                    {hero.preTitle}
+                    {hero.title}
+                  </h1>
+                )
+              }
+            </div>
+
+            {
+              hero.media && (
+                <div class="relative">
+                  <img
+                    src={urlFor(hero.media).width(1200).height(800).url()}
+                    alt={hero.media.alt || hero.title || "Log house by the lake"}
+                    class="h-full w-full rounded-3xl object-cover shadow-2xl"
+                    loading="eager"
+                  />
+                </div>
+              )
+            }
+          </div>
+        </div>
+      </section>
+    )
+  }
+
+  {
+    infoBlock && (
+      <section class="bg-white py-20 md:py-28">
+        <div class="container mx-auto grid gap-10 px-4 md:grid-cols-2 md:items-center">
+          {
+            infoBlock.media && (
+              <div>
+                <img
+                  src={urlFor(infoBlock.media).width(900).height(700).url()}
+                  alt={infoBlock.media.alt || infoBlock.title || "Log house details"}
+                  class="h-full w-full rounded-3xl object-cover shadow-xl"
+                  loading="lazy"
+                />
+              </div>
+            )
+          }
+
+          <div class="space-y-4">
+            {infoBlock.preTitle && (
+              <p class="text-sm font-semibold uppercase tracking-[0.2em] text-gray-500">
+                {infoBlock.preTitle}
+              </p>
+            )}
+
+            {infoBlock.title && (
+              <h2 class="text-3xl font-semibold text-gray-900 md:text-4xl">
+                {infoBlock.title}
+              </h2>
+            )}
+
+            {
+              Array.isArray(infoBlock.description) &&
+                infoBlock.description.length > 0 && (
+                  <p class="mt-4 text-base leading-relaxed text-gray-600">
+                    {
+                      infoBlock.description
+                        .map((block: any) =>
+                          Array.isArray(block.children)
+                            ? block.children.map((child: any) => child.text).join("")
+                            : "",
+                        )
+                        .join("\n\n")
+                    }
+                  </p>
+                )
+            }
+
+            {
+              infoBlock.button?.label && infoBlock.button?.href && (
+                <div class="mt-6">
+                  <a
+                    href={infoBlock.button.href}
+                    class="inline-flex items-center rounded-full bg-black px-6 py-3 text-sm font-semibold text-white shadow-lg transition hover:bg-gray-900"
+                  >
+                    {infoBlock.button.label}
+                  </a>
+                </div>
+              )
+            }
+          </div>
+        </div>
+      </section>
+    )
+  }
+
   <Clients />
   <ServicesSection />
   <PortfolioSection />

@@ -17,13 +17,22 @@ let {
 } = config.settings;
 const { footerSpaceTop = true } = Astro.props;
 
-const {
-  data: { title, description },
-} = await getEntryCTM("sections", "call-to-action", Astro.currentLocale);
+// Call-to-action block content (optional if Sanity document is missing)
+const ctaEntry = await getEntryCTM(
+  "sections",
+  "call-to-action",
+  Astro.currentLocale,
+);
+const title = ctaEntry?.data?.title;
+const description = ctaEntry?.data?.description;
 
-let { form } = (
-  await getEntryCTM("sections", "contact-section", Astro.currentLocale)
-)?.data;
+// Contact form configuration (optional)
+const contactEntry = await getEntryCTM(
+  "sections",
+  "contact-section",
+  Astro.currentLocale,
+);
+const form = contactEntry?.data?.form;
 
 footerDescription = footerDescription || t("footer.description") || "";
 

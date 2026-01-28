@@ -13,22 +13,24 @@ type Props = {
   content?: pricingSectionSchema;
 };
 
-// Fetching the default content for the this section
-let defaultContent = (
-  await getEntryCTM("sections", "pricing-section", Astro.currentLocale)
-)?.data as pricingSectionSchema;
+// Fetching the default content for this section (may be missing in Sanity initially)
+let defaultContent = ((await getEntryCTM(
+  "sections",
+  "pricing-section",
+  Astro.currentLocale,
+))?.data || {}) as pricingSectionSchema;
 
 // Enables content customization (e.g., title, description) with a fallback to 'defaultContent' if not provided.
 // The 'content' prop should match the structure of 'defaultContent'.
 // Allows using this section with different content across multiple pages.
 // If 'content' is missing, 'defaultContent' will be used.
 let actualContent = overrideObjects(
-  { ...defaultContent },
+  { ...(defaultContent || {}) },
   Astro.props.content,
 ) as pricingSectionSchema;
 
 // Extracting required values from 'content' object
-let { enable = true, title, list } = actualContent || {};
+let { enable = true, title, list = [] } = actualContent || {};
 
 if (!enable) {
   return null;
