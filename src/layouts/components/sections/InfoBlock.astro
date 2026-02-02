@@ -1,0 +1,61 @@
+---
+const { preTitle, title, description, media, button } = Astro.props;
+
+// Same as home page: plain text from portable text blocks
+const descriptionText =
+  Array.isArray(description) && description.length > 0
+    ? description
+        .map((block: any) =>
+          Array.isArray(block.children)
+            ? block.children.map((child: any) => child?.text ?? "").join("")
+            : "",
+        )
+        .join("\n\n")
+    : "";
+---
+
+<section class="bg-white py-20 md:py-28">
+  <div class="container mx-auto grid gap-10 px-4 md:grid-cols-2 md:items-center">
+    {media?.asset?.url && (
+      <div>
+        <img
+          src={media.asset.url}
+          alt={media.alt || title || "Log house details"}
+          class="h-full w-full rounded-xl object-cover shadow-xl"
+          loading="lazy"
+        />
+      </div>
+    )}
+
+    <div class="space-y-4">
+      {preTitle && (
+        <p class="text-sm font-semibold uppercase tracking-[0.2em] text-gray-500">
+          {preTitle}
+        </p>
+      )}
+
+      {title && (
+        <h2 class="text-3xl font-semibold text-gray-900 md:text-4xl">
+          {title}
+        </h2>
+      )}
+
+      {descriptionText && (
+        <p class="mt-4 text-base leading-relaxed text-gray-600">
+          {descriptionText}
+        </p>
+      )}
+
+      {button?.label && button?.href && (
+        <div class="mt-6">
+          <a
+            href={button.href}
+            class="inline-flex items-center rounded-full bg-black px-6 py-3 text-sm font-semibold text-white shadow-lg transition hover:bg-gray-900"
+          >
+            {button.label}
+          </a>
+        </div>
+      )}
+    </div>
+  </div>
+</section>

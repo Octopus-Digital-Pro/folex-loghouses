@@ -1,0 +1,180 @@
+---
+import Base from "@/layouts/Base.astro";
+import { sanity } from "@/lib/sanityClient";
+import { urlFor } from "@/lib/sanityImage";
+import { portableTextToHtml } from "@/lib/portableText";
+import { getCollectionCTM } from "@/lib/contentParser.astro";
+import config from ".astro/config.generated.json" with { type: "json" };
+import SinglePageLayout from "@/components/SinglePageLayout.astro";
+import extractSlug from "@/lib/utils/extractSlug";
+
+import BannerAgencyStartup from "@/components/sections/Banner.astro";
+import Clients from "@/components/sections/Clients.astro";
+import InfoBlock from "@/components/sections/InfoBlock.astro";
+import PortfolioSection from "@/components/sections/PortfolioSection.astro";
+
+function portableTextToPlainText(blocks: { children?: { text?: string }[] }[] | undefined): string {
+  if (!Array.isArray(blocks) || blocks.length === 0) return "";
+  return blocks
+    .map((block) =>
+      Array.isArray(block.children)
+        ? block.children.map((c) => c?.text ?? "").join("")
+        : "",
+    )
+    .filter(Boolean)
+    .join("\n\n");
+}
+
+// Default locale only: /offers, /about (no lang prefix)
+const slug = (Astro.params.slug ?? "").replace(/\/+$/, "").trim();
+
+export async function getStaticPaths() {
+  const { defaultLanguage } = config.settings.multilingual;
+  const pathEntries: Array<{ params: { slug: string }; props?: { ctmPage?: any } }> = [];
+
+  // Sanity _type "page" slugs
+  const sanitySlugs = await sanity.fetch<{ slug: string }[]>(
+    `*[_type == "page" && defined(slug.current)]{ "slug": slug.current }`,
+  );
+  for (const { slug: s } of sanitySlugs ?? []) {
+    pathEntries.push({ params: { slug: s } });
+  }
+
+  // Content "pages" for default locale only
+  const pages = await getCollectionCTM("pages", defaultLanguage);
+  for (const page of pages) {
+    const pageSlug = page.slug ?? extractSlug(page).split("/").pop();
+    if (!pageSlug) continue;
+    pathEntries.push({ params: { slug: pageSlug }, props: { ctmPage: page } });
+  }
+
+  return pathEntries;
+}
+
+const sanityPage = await sanity.fetch(
+  /* groq */ `
+  *[_type == "page" && slug.current == $slug][0]{
+    title,
+    "slug": slug.current,
+    seo,
+    sections[]{
+      _key,
+      _type,
+      ...,
+      media{ alt, asset->{url} }
+    }
+  }
+`,
+  { slug },
+);
+
+let ctmPage: any = null;
+let seo: any = undefined;
+let ogImageUrl: string | undefined = undefined;
+let baseProps: any = {};
+
+if (sanityPage) {
+  baseProps = { title: sanityPage.title };
+  seo = sanityPage.seo
+    ? {
+        title: sanityPage.seo.title,
+        description: sanityPage.seo.description,
+        noFollow: sanityPage.seo.noFollow,
+        ogTitle: sanityPage.seo.ogTitle,
+        ogDescription: sanityPage.seo.ogDescription,
+        ogImage: sanityPage.seo.ogImage,
+      }
+    : undefined;
+  ogImageUrl =
+    sanityPage.seo?.ogImage != null
+      ? urlFor(sanityPage.seo.ogImage).width(1200).height(630).url()
+      : undefined;
+} else {
+  ctmPage = Astro.props.ctmPage;
+  if (!ctmPage) {
+    const pages = await getCollectionCTM("pages", config.settings.multilingual.defaultLanguage);
+    ctmPage = pages.find((p) => (p.slug ?? extractSlug(p).split("/").pop()) === slug) ?? null;
+  }
+  if (!ctmPage) {
+    return Astro.redirect("/404");
+  }
+  baseProps = { ...ctmPage.data };
+  const cmsSeo = ctmPage?.data?.seo;
+  seo = cmsSeo
+    ? {
+        title: cmsSeo.title,
+        description: cmsSeo.description,
+        noFollow: cmsSeo.noFollow,
+        ogTitle: cmsSeo.ogTitle,
+        ogDescription: cmsSeo.ogDescription,
+        ogImage: cmsSeo.ogImage,
+      }
+    : undefined;
+  ogImageUrl =
+    cmsSeo?.ogImage != null
+      ? urlFor(cmsSeo.ogImage).width(1200).height(630).url()
+      : undefined;
+}
+
+function mapHeroBannerContent(hero: any) {
+  if (!hero) return undefined;
+  const titleStr = [hero.preTitle, hero.title].filter(Boolean).join("").trim();
+  return {
+    title: titleStr || undefined,
+    description: portableTextToPlainText(hero.description) || undefined,
+    image: hero.media?.asset?.url
+      ? hero.media.asset.url
+      : hero.media
+        ? urlFor(hero.media).width(1200).height(800).url()
+        : undefined,
+  };
+}
+
+function mapAccordionContent(section: any) {
+  if (!section?.items?.length) return undefined;
+  return {
+    enable: true,
+    title: section.title ?? undefined,
+    items: section.items.map((item: any) => ({
+      title: item.title ?? "",
+      description: portableTextToHtml(item.description),
+    })),
+  };
+}
+
+function mapClientsContent(section: any) {
+  if (!section?.list?.length) return undefined;
+  return {
+    enable: section.enable ?? true,
+    title: section.title,
+    list: section.list.map((item: any) => ({
+      src: item.src ? urlFor(item.src).url() : "",
+      alt: item.alt ?? "",
+    })),
+    options: section.options ?? {},
+  };
+}
+
+const heroSection = sanityPage?.sections?.find((s: any) => s._type === "hero");
+const accordionSection = sanityPage?.sections?.find((s: any) => s._type === "accordion");
+const clientsSection = sanityPage?.sections?.find((s: any) => s._type === "clients");
+const infoBlockSection = sanityPage?.sections?.find((s: any) => s._type === "infoBlock");
+
+const heroBannerContent = mapHeroBannerContent(heroSection);
+const accordionContent = mapAccordionContent(accordionSection);
+const clientsContent = mapClientsContent(clientsSection);
+---
+
+<Base {...baseProps} seo={seo} ogImageUrl={ogImageUrl}>
+  {sanityPage ? (
+    <main>
+      <h1 class="sr-only">{sanityPage.title}</h1>
+      {heroBannerContent && <BannerAgencyStartup content={heroBannerContent as any} />}
+      {infoBlockSection && <InfoBlock {...infoBlockSection} />}
+      <Clients content={clientsContent ?? undefined} />
+      {accordionContent && <PortfolioSection content={accordionContent} />}
+    </main>
+  ) : (
+    <SinglePageLayout content={{ ...ctmPage.data, ...ctmPage }} />
+  )}
+</Base>
