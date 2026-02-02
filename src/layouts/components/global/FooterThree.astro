@@ -6,25 +6,40 @@ import SocialComponent from "@/components/widgets/Social.astro";
 import social from "@/config/social.json";
 import { useTranslations } from "@/lib/utils/i18nUtils";
 import { getEntryCTM } from "@/lib/contentParser.astro";
+import { sanity } from "@/lib/sanityClient";
+import { urlFor } from "@/lib/sanityImage";
 import ContactForm from "../widgets/ContactForm.astro";
 
 const t = await useTranslations(Astro.currentLocale as string);
 
+
+
+
 let {
   copyright,
   footerDescription,
-  contactInfo: { address, email, phone },
+  contactInfo: { address: configAddress, email: configEmail, phone: configPhone },
 } = config.settings;
 const { footerSpaceTop = true } = Astro.props;
 
-// Call-to-action block content (optional if Sanity document is missing)
+// Sanity footer document (single global footer)
+const sanityFooter = await sanity.fetch<{
+  title?: string;
+  description?: string;
+  copyright?: string;
+  socials?: Array<{ icon?: { asset?: { _ref?: string } }; url?: string }>;
+  address?: string;
+  contact?: { phone?: string; email?: string };
+} | null>(`*[_type == "footer"][0]{ title, description, copyright, socials, address, contact }`);
+
+// Title & description: Sanity footer > call-to-action section > fallback
 const ctaEntry = await getEntryCTM(
   "sections",
   "call-to-action",
   Astro.currentLocale,
 );
-const title = ctaEntry?.data?.title;
-const description = ctaEntry?.data?.description;
+const title = sanityFooter?.title ?? ctaEntry?.data?.title;
+const description = sanityFooter?.description ?? ctaEntry?.data?.description;
 
 // Contact form configuration (optional)
 const contactEntry = await getEntryCTM(
@@ -34,10 +49,34 @@ const contactEntry = await getEntryCTM(
 );
 const form = contactEntry?.data?.form;
 
-footerDescription = footerDescription || t("footer.description") || "";
+footerDescription =
+  (sanityFooter?.description ? "" : footerDescription) ||
+  t("footer.description") ||
+  "";
 
-const copyrightText = copyright.text || t("footer.copyright") || "";
+// Copyright: Sanity footer > config
+const copyrightText =
+  sanityFooter?.copyright ?? copyright?.text ?? t("footer.copyright") ?? "";
 const copyrightParts = splitProtectedText(copyrightText);
+const showCopyright =
+  (sanityFooter ? !!sanityFooter.copyright : config.settings.copyright?.enable) &&
+  copyrightParts.length > 0;
+
+// Address & contact: Sanity footer > config
+const address = sanityFooter?.address ?? configAddress;
+const phone = sanityFooter?.contact?.phone ?? configPhone;
+const email = sanityFooter?.contact?.email ?? configEmail;
+
+// Social links: Sanity footer socials (image URLs) > config (React icon names)
+const socialList =
+  sanityFooter?.socials && sanityFooter.socials.length > 0
+    ? sanityFooter.socials.map((item, i) => ({
+        enable: true,
+        label: `Social ${i + 1}`,
+        url: item.url ?? "#",
+        icon: item.icon ? urlFor(item.icon).width(32).height(32).url() : "",
+      }))
+    : social.main.filter((s) => s.enable);
 ---
 
 <footer
@@ -65,7 +104,7 @@ const copyrightParts = splitProtectedText(copyrightText);
         }
         <div class="space-y-4">
           {
-            config.settings.copyright?.enable && (
+            showCopyright && (
               <ul class="has-list has-list-slash prose-a:text-inherit flex flex-wrap gap-y-2">
                 {copyrightParts.map((value) => (
                   <li class="prose-a:text-text-default/70 prose-a:hover:text-text-default">
@@ -81,7 +120,7 @@ const copyrightParts = splitProtectedText(copyrightText);
             layout="dark"
             class="gap-5"
             linkType="follow"
-            list={social.main.filter((s) => s.enable)}
+            list={socialList}
           />
         </div>
       </div>
@@ -97,3 +136,4 @@ const copyrightParts = splitProtectedText(copyrightText);
     </div>
   </div>
 </footer>
+

@@ -122,19 +122,32 @@ if (linkType === "share" && currentPage) {
                 "group text-text-default bg-theme-light hover:bg-theme-dark hover:text-light relative flex h-12 w-12 items-center justify-center rounded-full transition duration-300",
             ]}>
             <span class="sr-only">{social.label}</span>
-            {social.icon && (
-              <ReactIcons
-                icon={social.icon}
-                class:list={[
-                  "has-inherited-colors relative z-10 transition duration-300",
-                  size === "sm" && "text-base",
-                  size === "md" && "text-xl",
-                  size === "lg" && "text-[1.375rem]",
-                  layout === "dark" && "hover:scale-110",
-                  layout === "light" && "hover:text-accent",
-                ]}
-              />
-            )}
+            {social.icon &&
+              (social.icon.startsWith("http://") || social.icon.startsWith("https://") ? (
+                <img
+                  src={social.icon}
+                  alt={social.label}
+                  class:list={[
+                    "has-inherited-colors relative z-10 transition duration-300",
+                    size === "sm" && "h-4 w-4",
+                    size === "md" && "h-5 w-5",
+                    size === "lg" && "h-6 w-7",
+                    layout === "dark" && "hover:scale-110",
+                  ]}
+                />
+              ) : (
+                <ReactIcons
+                  icon={social.icon}
+                  class:list={[
+                    "has-inherited-colors relative z-10 transition duration-300",
+                    size === "sm" && "text-base",
+                    size === "md" && "text-xl",
+                    size === "lg" && "text-[1.375rem]",
+                    layout === "dark" && "hover:scale-110",
+                    layout === "light" && "hover:text-accent",
+                  ]}
+                />
+              ))}
           </a>
         </li>
       ))}
