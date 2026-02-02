@@ -7,46 +7,58 @@ import { useTranslations } from "@/lib/utils/i18nUtils";
 import { getCollectionCTM, getEntryCTM } from "@/lib/contentParser.astro";
 import config from ".astro/config.generated.json" with { type: "json" };
 import type { CollectionEntry } from "astro:content";
+import uniqueIdGenerator from "@/lib/utils/uniqueIdGenerator";
+import ReactIcons from "@/helpers/ReactIcons.astro";
 
-// Type for this section data
+// Accordion item (from Sanity accordion module)
+type AccordionItem = { title: string; description: string };
+
+// Type for this section data (portfolio grid or Sanity accordion)
 export type PortfolioInterface = Section & {
   options?: CollectionEntry<"portfolio">["data"]["options"];
+  items?: AccordionItem[];
 };
 
 type Props = {
   content?: PortfolioInterface;
 };
 
-// Fetching the default content for the this section
-let defaultContent = (
-  await getEntryCTM("sections", "portfolio-section", Astro.currentLocale)
-)?.data as PortfolioInterface;
+// Fetching the default content for this section (may be missing; home can use Sanity accordion).
+let defaultContent = ((await getEntryCTM(
+  "sections",
+  "portfolio-section",
+  Astro.currentLocale,
+))?.data || {}) as PortfolioInterface;
 
-// Enables content customization (e.g., title, description) with a fallback to 'defaultContent' if not provided.
-// The 'content' prop should match the structure of 'defaultContent'.
-// Allows using this section with different content across multiple pages.
-// If 'content' is missing, 'defaultContent' will be used.
+// Enables content customization. When content has `items`, we render accordion (Sanity accordion module).
 let actualContent = overrideObjects(
-  { ...defaultContent },
+  { ...(defaultContent || {}) },
   Astro.props.content,
 ) as PortfolioInterface;
 
 const t = await useTranslations(Astro.currentLocale as string);
 
 // Extracting required values from 'content' object
-let { enable = true, title, options } = actualContent as PortfolioInterface;
+let { enable = true, title, options, items: accordionItems } = actualContent || {};
 
 const { layout, appearance, limit } = options || {};
 
-let projects = await getCollectionCTM(
-  config.settings.portfolioFolder as "portfolio",
-  Astro.currentLocale,
-);
+// Accordion mode: content from Sanity accordion (title + items with description)
+const isAccordionMode = Array.isArray(accordionItems) && accordionItems.length > 0;
+
+let projects = isAccordionMode
+  ? []
+  : await getCollectionCTM(
+      config.settings.portfolioFolder as "portfolio",
+      Astro.currentLocale,
+    );
 
 const isDarkAppearance = appearance === "dark";
 
-// Limiting the number of projects to be displayed
-projects = limit ? projects.slice(0, limit as number) : projects;
+// Limiting the number of projects to be displayed (portfolio mode only)
+if (!isAccordionMode) {
+  projects = limit ? projects.slice(0, limit as number) : projects;
+}
 
 if (!enable) {
   return null;
@@ -72,7 +84,56 @@ if (!enable) {
         )
       }
       {
-        layout === "masonry" || layout === "grid" ? (
+        isAccordionMode && accordionItems ? (
+          <div class="hs-accordion-group mx-auto w-full max-w-4xl">
+            {accordionItems.map((item, index) => {
+              const id = uniqueIdGenerator(item.title);
+              return (
+                <div
+                  class:list={[
+                    "hs-accordion relative border-b py-6 text-start first:border-t lg:pe-20",
+                    "transition-all duration-300 lg:flex lg:flex-row lg:items-start lg:justify-between lg:gap-16",
+                    index === 0 && "active",
+                  ]}
+                  id={"accordion-" + id}>
+                  <div
+                    class="font-secondary mt-2.5 mb-4 text-2xl font-semibold lg:mb-0 lg:text-sm"
+                    set:html={(index <= 9 ? "0" : "") + (index + 1)}
+                  />
+                  <button
+                    title="show or hide accordion content"
+                    class="hs-accordion-toggle absolute inset-0 size-full"
+                  />
+                  <button
+                    title="show or hide accordion content"
+                    aria-controls={"accordion-content-" + id}
+                    aria-expanded={index === 0 ? "true" : "false"}
+                    class="hs-accordion-toggle text-dark font-secondary text-h5 w-full pe-20 text-start font-medium lg:pe-0"
+                    set:html={item.title}
+                  />
+                  <div
+                    role="region"
+                    id={"accordion-content-" + id}
+                    aria-labelledby={"accordion-" + id}
+                    class:list={[
+                      "hs-accordion-content hs-accordion-active:opacity-100 w-full max-w-lg overflow-hidden opacity-0 transition-all duration-300 ease-linear",
+                      index !== 0 && "hidden",
+                    ]}>
+                    <div class="prose-styles prose-p:first:mt-0 prose-p:last:mb-0 pt-3 lg:pt-0">
+                      <div set:html={item.description} />
+                    </div>
+                  </div>
+                  <div class="hs-accordion-active:rotate-180 pointer-events-none absolute end-0 top-8 flex transition duration-300">
+                    <ReactIcons
+                      icon="RxArrowTopRight"
+                      class="text-dark text-xl"
+                    />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        ) : layout === "masonry" || layout === "grid" ? (
           <div
             class:list={[
               "gap-x-20 lg:columns-2",
@@ -81,9 +142,10 @@ if (!enable) {
             {projects.map((item, index) => (
               <PortfolioCard
                 class:list={["space-y-4 overflow-hidden"]}
+                collection="portfolio"
                 options={options}
                 translations={t}
-                content={item}
+                content={item as CollectionEntry<"portfolio">}
                 index={index}
               />
             ))}

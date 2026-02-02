@@ -16,23 +16,23 @@ type Props = {
   content?: bannerAgency;
 };
 
-// Fetching the default content for the this section
-let defaultContent = (
-  await getEntryCTM("sections", "banner", Astro.currentLocale)
-)?.data as bannerAgency;
+// Fetching the default content for this section (may be missing in Sanity; e.g. home uses hero from homePage).
+let defaultContent = ((await getEntryCTM(
+  "sections",
+  "banner",
+  Astro.currentLocale,
+))?.data || {}) as bannerAgency;
 
 // Enables content customization (e.g., title, description) with a fallback to 'defaultContent' if not provided.
-// The 'content' prop should match the structure of 'defaultContent'.
-// Allows using this section with different content across multiple pages.
-// If 'content' is missing, 'defaultContent' will be used.
+// The 'content' prop can be from Sanity homePage hero (title + image) or full banner section.
 let actualContent = overrideObjects(
-  { ...defaultContent },
+  { ...(defaultContent || {}) },
   Astro.props.content,
 ) as bannerAgency;
 
 // Extracting required values from 'content' object
 let { title, image, titleSize, description, button } =
-  actualContent as bannerAgency;
+  actualContent || {};
 
 // Font sizes for the heading (useful if you have a long heading)
 const fontSizeMap: Record<NonNullable<typeof titleSize>, string> = {
@@ -55,7 +55,7 @@ const fontSize = titleSize ? fontSizeMap[titleSize] : fontSizeMap["display-1"];
             class:list={[
               "text-inherit",
               fontSize,
-              "block leading-tight font-bold break-words text-inherit",
+              "block leading-tight font-bold wrap-break-words text-inherit",
             ]}
             set:html={markdownify(title)}
           />
@@ -103,11 +103,20 @@ const fontSize = titleSize ? fontSizeMap[titleSize] : fontSizeMap["display-1"];
             data-aos-delay="300"
             data-aos-offset="0"
             class="mx-auto mt-10 -mb-24 max-w-4xl md:mt-20 md:-mb-32">
-            <OptimizedImage
-              src={image}
-              alt={title || "Banner"}
-              class="h-110 w-full object-cover md:h-135"
-            />
+            {typeof image === "string" && (image.startsWith("http://") || image.startsWith("https://")) ? (
+              <img
+                src={image}
+                alt={title || "Banner"}
+                class="h-110 w-full object-cover md:h-135"
+                loading="eager"
+              />
+            ) : (
+              <OptimizedImage
+                src={image}
+                alt={title || "Banner"}
+                class="h-110 w-full object-cover md:h-135"
+              />
+            )}
           </div>
         )
       }

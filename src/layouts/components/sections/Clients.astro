@@ -13,21 +13,24 @@ type Props = {
   content?: ClientsSection;
 };
 
-let defaultContent = (
-  await getEntryCTM("sections", "clients", Astro.currentLocale)
-)?.data as ClientsSection;
+// Default content (may be missing; home can use Sanity clients section)
+let defaultContent = ((await getEntryCTM(
+  "sections",
+  "clients",
+  Astro.currentLocale,
+))?.data || {}) as ClientsSection;
 
 let actualContent = overrideObjects(
-  { ...defaultContent },
+  { ...(defaultContent || {}) },
   Astro.props.content,
 ) as ClientsSection;
 
 let {
   enable = true,
   title,
-  list,
+  list = [],
   options: { columnsPerRow, appearance } = {},
-} = actualContent;
+} = actualContent || {};
 
 const isDarkAppearance = appearance === "dark";
 
@@ -60,30 +63,58 @@ if (!enable) {
           : "mx-auto max-w-4xl lg:grid-cols-4",
       ]}>
       {
-        list?.map((item) => (
-          <li
-            class:list={[
-              "group flex h-32 w-full items-center justify-center border",
-              isDarkAppearance && "border-white",
-            ]}>
-            <div class="relative h-8 grow overflow-hidden px-8">
-              <OptimizedImage
-                width={140}
-                height={32}
-                src={item.src}
-                alt={item.alt}
-                class="mx-auto h-8 transition-all duration-300 group-hover:-translate-y-8"
-              />
-              <OptimizedImage
-                width={140}
-                height={32}
-                src={item.src}
-                alt={item.alt}
-                class="mx-auto h-8 transition-all duration-300 group-hover:-translate-y-8"
-              />
-            </div>
-          </li>
-        ))
+        list.map((item) => {
+          const isExternalSrc =
+            typeof item.src === "string" &&
+            (item.src.startsWith("http://") || item.src.startsWith("https://"));
+          const imgClass =
+            "mx-auto h-8 transition-all duration-300 group-hover:-translate-y-8";
+          return (
+            <li
+              class:list={[
+                "group flex h-32 w-full items-center justify-center border",
+                isDarkAppearance && "border-white",
+              ]}>
+              <div class="relative h-8 grow overflow-hidden px-8">
+                {isExternalSrc ? (
+                  <>
+                    <img
+                      src={item.src}
+                      alt={item.alt ?? ""}
+                      width={140}
+                      height={32}
+                      class={imgClass}
+                    />
+                    <img
+                      src={item.src}
+                      alt={item.alt ?? ""}
+                      width={140}
+                      height={32}
+                      class={imgClass}
+                    />
+                  </>
+                ) : (
+                  <>
+                    <OptimizedImage
+                      width={140}
+                      height={32}
+                      src={item.src}
+                      alt={item.alt}
+                      class={imgClass}
+                    />
+                    <OptimizedImage
+                      width={140}
+                      height={32}
+                      src={item.src}
+                      alt={item.alt}
+                      class={imgClass}
+                    />
+                  </>
+                )}
+              </div>
+            </li>
+          );
+        })
       }
     </ul>
   </div>
