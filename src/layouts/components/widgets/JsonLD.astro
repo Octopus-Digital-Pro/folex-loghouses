@@ -13,6 +13,7 @@ let {
   metaDescription = description,
   image = config.opengraph.image,
   taglineSeparator = " - ",
+  tagline: contentTagline,
   disableTagline,
   canonical,
   lang,
@@ -21,13 +22,14 @@ let {
   pageType,
 } = content;
 
+const tagline = contentTagline ?? config.site.tagline;
 const alternateLangs = config.settings.multilingual.enable
   ? supportedLanguages
   : [];
 
 title =
   !disableTagline && metaTitle
-    ? `${metaTitle}${config.site.tagline ? taglineSeparator + config.site.tagline : ""}`
+    ? `${metaTitle}${tagline ? taglineSeparator + tagline : ""}`
     : config.site.title;
 
 description = metaDescription ? metaDescription : description;

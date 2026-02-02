@@ -5,6 +5,7 @@ import { supportedLanguages } from "@/lib/utils/i18nUtils";
 import config from ".astro/config.generated.json" with { type: "json" };
 import SinglePageLayout from "@/components/SinglePageLayout.astro";
 import extractSlug from "@/lib/utils/extractSlug";
+import { urlFor } from "@/lib/sanityImage";
 
 // get static paths for all pages
 export async function getStaticPaths() {
@@ -35,8 +36,25 @@ export async function getStaticPaths() {
 }
 
 const { page } = Astro.props;
+
+// Build SEO/OG props from CMS when page has seo
+const cmsSeo = page?.data?.seo;
+const seo = cmsSeo
+  ? {
+      title: cmsSeo.title,
+      description: cmsSeo.description,
+      noFollow: cmsSeo.noFollow,
+      ogTitle: cmsSeo.ogTitle,
+      ogDescription: cmsSeo.ogDescription,
+      ogImage: cmsSeo.ogImage,
+    }
+  : undefined;
+const ogImageUrl =
+  cmsSeo?.ogImage != null
+    ? urlFor(cmsSeo.ogImage).width(1200).height(630).url()
+    : undefined;
 ---
 
-<Base {...page.data}>
+<Base {...page.data} seo={seo} ogImageUrl={ogImageUrl}>
   <SinglePageLayout content={{ ...page.data, ...page }} />
 </Base>

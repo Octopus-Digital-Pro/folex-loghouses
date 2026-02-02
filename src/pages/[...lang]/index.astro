@@ -15,9 +15,15 @@ export function getStaticPaths() {
   return generatePaths();
 }
 
-// Fetch home page from Sanity
+// Fetch home page from Sanity (include seo for meta/OG)
 const page = await sanity.fetch(
-  `*[_type == "homePage" && slug.current == $slug][0]`,
+  `*[_type == "homePage" && slug.current == $slug][0]{
+    title,
+    "slug": slug.current,
+    seo,
+    sections[],
+    ...
+  }`,
   { slug: "/" },
 );
 
@@ -86,9 +92,31 @@ const clientsContent =
       }
     : null;
 
+// Build SEO/OG props from CMS for Base
+const seo = page?.seo
+  ? {
+      title: page.seo.title,
+      description: page.seo.description,
+      noFollow: page.seo.noFollow,
+      ogTitle: page.seo.ogTitle,
+      ogDescription: page.seo.ogDescription,
+      ogImage: page.seo.ogImage,
+    }
+  : undefined;
+const ogImageUrl =
+  page?.seo?.ogImage != null
+    ? urlFor(page.seo.ogImage).width(1200).height(630).url()
+    : undefined;
+
 ---
 
-<Base {...(page || {})} headerPosition="fixed" hasHeaderDarkBackground={true}>
+<Base
+  {...(page || {})}
+  seo={seo}
+  ogImageUrl={ogImageUrl}
+  headerPosition="fixed"
+  hasHeaderDarkBackground={true}
+>
   {
     heroBannerContent && (
       <BannerAgencyStartup content={heroBannerContent} />

@@ -9,6 +9,16 @@ import HelperButtons from "@/components/utilities/HelperButtons.astro";
 import BreakpointIndicator from "@/components/widgets/BreakpointIndicator.astro";
 import FooterThree from "@/components/global/FooterThree.astro";
 
+/** SEO/OG fields from CMS (e.g. Sanity homePage/pages seo object) */
+export interface SeoFromCms {
+  title?: string;
+  description?: string;
+  noFollow?: boolean;
+  ogTitle?: string;
+  ogDescription?: string;
+  ogImage?: { _type?: string; asset?: { _ref: string; _type: string } };
+}
+
 interface Props extends JSONLDProps {
   className?: string;
   fitToScreen?: boolean;
@@ -21,11 +31,21 @@ interface Props extends JSONLDProps {
   metaTitle?: string;
   metaDescription?: string;
   robots?: string;
+  /** SEO/OG data from CMS; when set, overrides metaTitle, metaDescription, robots, and provides OG fields */
+  seo?: SeoFromCms | null;
+  /** Resolved OG image URL (when seo.ogImage is provided, pass urlFor(seo.ogImage).width(1200).height(630).url()) */
+  ogImageUrl?: string;
+  /** Open Graph title from CMS (seo.ogTitle) */
+  ogTitle?: string;
+  /** Open Graph description from CMS (seo.ogDescription) */
+  ogDescription?: string;
   excludeFromSitemap?: boolean;
   customSlug?: string;
   canonical?: string;
   keywords?: string[];
   disableTagline?: boolean;
+  /** When set (e.g. from CMS meta description), overrides config.site.tagline for title/OG/JSON-LD */
+  tagline?: string;
   structuredData?: Props;
   footerLayout?: "footer-1" | "footer-2" | "footer-3";
 }
@@ -45,6 +65,21 @@ let {
 
 // Exclude empty key value weather it may empty string, object or array from Astro.props
 let props = removeEmptyKeys(Astro.props);
+
+// When CMS seo is provided, override meta/OG props for Head
+const seo = Astro.props.seo;
+if (seo) {
+  if (seo.title != null) props.metaTitle = seo.title;
+  if (seo.description != null) {
+    props.metaDescription = seo.description;
+    // Re-map tagline from meta description when CMS provides it
+    props.tagline = seo.description;
+  }
+  if (seo.noFollow === true) props.robots = "noindex, nofollow";
+  if (seo.ogTitle != null) props.ogTitle = seo.ogTitle;
+  if (seo.ogDescription != null) props.ogDescription = seo.ogDescription;
+}
+if (Astro.props.ogImageUrl) props.ogImageUrl = Astro.props.ogImageUrl;
 
 // Conditionally add min-h-[102vh] class to prevent FOUC (flash of unstyled content) while fast navigation
 className = fitToScreen

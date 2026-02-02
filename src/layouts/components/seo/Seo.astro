@@ -2,9 +2,9 @@
 import { getLocaleUrlCTM, supportedLanguages } from "@/lib/utils/i18nUtils";
 import { plainify, removeWhitespace } from "@/lib/utils/textConverter";
 
-// Load configuration
+// Load configuration (content is passed from Head with title/metaTitle/description etc. from Base/CMS)
 const config = Astro.props.config;
-
+const content = Astro.props.content ?? {};
 const {
   title,
   metaTitle,
@@ -13,9 +13,11 @@ const {
   canonical,
   keywords: rawKeywords = config.seo.keywords,
   disableTagline,
+  tagline: contentTagline,
   author = config.seo.author,
-  robots = config.seo.robots,
-} = Astro.props;
+} = content;
+const robots = Astro.props.robots ?? config.seo.robots;
+const tagline = contentTagline ?? config.site.tagline;
 
 // Normalize title and description
 let resolvedTitle = plainify(metaTitle ?? title ?? config.site.title);
@@ -23,10 +25,10 @@ let resolvedDescription = plainify(
   metaDescription ?? description ?? config.site.description,
 );
 
-// Add tagline if not disabled
-if (!disableTagline && config.site.tagline) {
+// Add tagline if not disabled (tagline re-mapped from CMS meta description when provided)
+if (!disableTagline && tagline) {
   const separator = config.site.taglineSeparator || " - ";
-  resolvedTitle += separator + config.site.tagline;
+  resolvedTitle += separator + tagline;
 }
 
 // Clean up whitespace

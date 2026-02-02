@@ -11,23 +11,27 @@ const {
   description,
   metaDescription,
   disableTagline,
+  tagline: contentTagline,
   image = config.opengraph.image,
+  ogTitle: cmsOgTitle,
+  ogDescription: cmsOgDescription,
   twitter = config.opengraph.twitter,
   twitterCard = config.opengraph.twitterCard,
   ogType = config.opengraph.ogType,
   ogLocale = config.opengraph.ogLocale,
 } = Astro.props.content;
+const tagline = contentTagline ?? config.site.tagline;
 
-// Resolved title and description
-let resolvedTitle = plainify(metaTitle ?? title ?? config.site.title);
+// Resolved title and description (use CMS OG overrides when provided)
+let resolvedTitle = plainify(cmsOgTitle ?? metaTitle ?? title ?? config.site.title);
 let resolvedDescription = plainify(
-  metaDescription ?? description ?? config.site.description,
+  cmsOgDescription ?? metaDescription ?? description ?? config.site.description,
 );
 
-// Add tagline if not disabled
-if (!disableTagline && config.site.tagline) {
+// Add tagline if not disabled (only when not using CMS OG title; tagline re-mapped from CMS meta desc when provided)
+if (!cmsOgTitle && !disableTagline && tagline) {
   const separator = config.site.taglineSeparator || " - ";
-  resolvedTitle += separator + config.site.tagline;
+  resolvedTitle += separator + tagline;
 }
 
 // Clean up whitespace

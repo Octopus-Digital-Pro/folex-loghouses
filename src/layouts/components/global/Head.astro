@@ -24,8 +24,10 @@ const fontVariables = fontsJson.map((font) => font.cssVariable) as any[];
       description: Astro.props.description,
       metaDescription: Astro.props.metaDescription,
       canonical: Astro.props.canonical,
+      tagline: Astro.props.tagline,
     }}
     config={config}
+    robots={Astro.props.robots}
   />
   <meta
     name="theme-color"
@@ -52,6 +54,10 @@ const fontVariables = fontsJson.map((font) => font.cssVariable) as any[];
       description: Astro.props.description,
       metaDescription: Astro.props.metaDescription,
       disableTagline: Astro.props.disableTagline,
+      tagline: Astro.props.tagline,
+      ogTitle: Astro.props.ogTitle,
+      ogDescription: Astro.props.ogDescription,
+      image: Astro.props.ogImageUrl,
     }}
     config={config}
   />
@@ -63,6 +69,7 @@ const fontVariables = fontsJson.map((font) => font.cssVariable) as any[];
       description: Astro.props.description,
       metaDescription: Astro.props.metaDescription,
       disableTagline: Astro.props.disableTagline,
+      tagline: Astro.props.tagline,
       pageType: Astro.props.pageType,
     }}
   />
