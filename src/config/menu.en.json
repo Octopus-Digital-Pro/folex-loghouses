@@ -14,11 +14,6 @@
       "enable": true,
       "name": "Projects",
       "url": "/#projects"
-    },
-    {
-      "enable": true,
-      "name": "Pricing",
-      "url": "/#pricing"
     }
   ]
 }

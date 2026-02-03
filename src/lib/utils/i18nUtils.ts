@@ -36,7 +36,7 @@ export const enabledLanguages = getEnabledLocales();
  */
 const translationCache: Record<string, any> = {}; // Simple in-memory cache
 export const useTranslations = async (lang: string): Promise<Function> => {
-  const { defaultLanguage, disableLanguages } = config.settings.multilingual;
+  const {defaultLanguage, disableLanguages} = config.settings.multilingual;
 
   // Fallback to default language if the requested language is disabled
   const resolvedLang = disableLanguages?.includes(lang as never)
@@ -58,15 +58,21 @@ export const useTranslations = async (lang: string): Promise<Function> => {
   }
 
   const contentDir = language.contentDir;
-  let menu, dictionary;
+  let menu: any;
+  let dictionary: any;
 
+  // Load dictionary for this locale (fallback to default only if missing)
   try {
-    menu = await import(`../../../src/config/menu.${lang}.json`);
-    dictionary = await import(`../../../src/i18n/${lang}.json`);
-  } catch (error) {
-    // Fallback to default language if the requested language files fail to load
-    menu = await import(`../../../src/config/menu.${defaultLanguage}.json`);
+    dictionary = await import(`../../../src/i18n/${resolvedLang}.json`);
+  } catch {
     dictionary = await import(`../../../src/i18n/${defaultLanguage}.json`);
+  }
+
+  // Load menu for this locale (fallback to default only if missing)
+  try {
+    menu = await import(`../../../src/config/menu.${resolvedLang}.json`);
+  } catch {
+    menu = await import(`../../../src/config/menu.${defaultLanguage}.json`);
   }
 
   // Combine translations
@@ -129,8 +135,7 @@ export const getSupportedLanguages = (): Array<any> => {
       ? config.settings.multilingual.disableLanguages
       : supportedLanguages
           .map(
-            (lang) =>
-              lang.languageCode !== defaultLanguage && lang.languageCode,
+            (lang) => lang.languageCode !== defaultLanguage && lang.languageCode
           )
           .filter(Boolean)
   ) as (typeof supportedLanguages)[0]["languageCode"][];
@@ -138,7 +143,7 @@ export const getSupportedLanguages = (): Array<any> => {
   // Filter out the disabled languages
   cachedLanguages = disabledLanguages
     ? supportedLanguages.filter(
-        (lang) => !disabledLanguages?.includes(lang.languageCode),
+        (lang) => !disabledLanguages?.includes(lang.languageCode)
       )
     : supportedLanguages;
 
@@ -155,7 +160,7 @@ export const supportedLanguages = getSupportedLanguages();
  * @returns {Array} List of path objects containing language-specific parameters.
  */
 export function generatePaths(): Array<{
-  params: { lang: string | undefined };
+  params: {lang: string | undefined};
 }> {
   const supportedLanguages = getSupportedLanguages();
   const paths = supportedLanguages.map((lang) => ({
@@ -183,12 +188,12 @@ export function generatePaths(): Array<{
 export const getLocaleUrlCTM = (
   url: string,
   providedLang: string | undefined,
-  prependValue?: string,
+  prependValue?: string
 ): string => {
   const language = providedLang || defaultLanguage;
   const languageCodes = languagesJSON.map((language) => language.languageCode);
   const languageDirectories = new Set(
-    languagesJSON.map((language) => language.contentDir),
+    languagesJSON.map((language) => language.contentDir)
   );
 
   function checkIsExternal(url: string) {
@@ -298,7 +303,7 @@ export const getLocaleUrlCTM = (
   // Combine the language prefix with the URL with or without its language code
   updatedUrl = path.posix.join(
     prependLanguage,
-    getUrlWithoutLang(updatedUrl) as string,
+    getUrlWithoutLang(updatedUrl) as string
   );
 
   // Add trailing slash if needed

@@ -1,0 +1,19 @@
+{
+  "headerPrimary": [
+    {
+      "enable": true,
+      "name": "Főoldal",
+      "url": "/hu/"
+    },
+    {
+      "enable": true,
+      "name": "Szolgáltatások",
+      "url": "/hu/#services"
+    },
+    {
+      "enable": true,
+      "name": "Projektek",
+      "url": "/hu/#projects"
+    }
+  ]
+}

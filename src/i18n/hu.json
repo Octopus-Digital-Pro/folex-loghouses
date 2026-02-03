@@ -1,0 +1,21 @@
+{
+  "common": {
+    "viewDetails": "Részletek",
+    "learnMoreAbout": "Tudj meg többet",
+    "paginationPrevious": "Előző",
+    "paginationNext": "Következő",
+    "paginationPortfolioPrev": "Előző referencia",
+    "paginationPortfolioNext": "Következő referencia"
+  },
+  "headerOffcanvas": {
+    "description": "Digitális ügynökség vagyunk, amely segít a vállalkozásoknak immerzív élményeket teremteni.",
+    "buttonLabel": "Beszéljünk"
+  },
+  "navigation": {
+    "buttonLabel": "Kezdjük"
+  },
+  "footer": {
+    "copyright": "© {{ year }} Folex / Készítette: [Getastrothemes](https://getastrothemes.com/)",
+    "_comment": "We kindly appreciate it if you retain the theme copyright. Thank you for supporting Getastrothemes!"
+  }
+}
