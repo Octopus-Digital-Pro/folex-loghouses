@@ -32,12 +32,14 @@ export async function getStaticPaths() {
   const { defaultLanguage } = config.settings.multilingual;
   const pathEntries: Array<{ params: { slug: string }; props?: { ctmPage?: any } }> = [];
 
-  // Sanity _type "page" slugs
-  const sanitySlugs = await sanity.fetch<{ slug: string }[]>(
-    `*[_type == "page" && defined(slug.current)]{ "slug": slug.current }`,
+  // Sanity _type "page" slugs for default locale only
+  const sanityPages = await sanity.fetch<{ slug: string; language: string }[]>(
+    `*[_type == "page" && defined(slug.current)]{ "slug": slug.current, language }`,
   );
-  for (const { slug: s } of sanitySlugs ?? []) {
-    pathEntries.push({ params: { slug: s } });
+  for (const { slug: s, language } of sanityPages ?? []) {
+    if (language === defaultLanguage) {
+      pathEntries.push({ params: { slug: s } });
+    }
   }
 
   // Content "pages" for default locale only
@@ -51,9 +53,10 @@ export async function getStaticPaths() {
   return pathEntries;
 }
 
+const { defaultLanguage } = config.settings.multilingual;
 const sanityPage = await sanity.fetch(
   /* groq */ `
-  *[_type == "page" && slug.current == $slug][0]{
+  *[_type == "page" && language == $lang && slug.current == $slug][0]{
     title,
     "slug": slug.current,
     seo,
@@ -65,7 +68,7 @@ const sanityPage = await sanity.fetch(
     }
   }
 `,
-  { slug },
+  { lang: defaultLanguage, slug },
 );
 
 let ctmPage: any = null;

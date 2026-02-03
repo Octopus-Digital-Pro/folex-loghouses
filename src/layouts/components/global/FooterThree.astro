@@ -22,7 +22,10 @@ let {
 } = config.settings;
 const { footerSpaceTop = true } = Astro.props;
 
-// Sanity footer document (single global footer)
+// Current locale so each language gets its own footer
+const lang = Astro.currentLocale ?? config.settings.multilingual.defaultLanguage;
+
+// Sanity footer document for this locale (EN/HU etc.)
 const sanityFooter = await sanity.fetch<{
   title?: string;
   description?: string;
@@ -30,7 +33,10 @@ const sanityFooter = await sanity.fetch<{
   socials?: Array<{ icon?: { asset?: { _ref?: string } }; url?: string }>;
   address?: string;
   contact?: { phone?: string; email?: string };
-} | null>(`*[_type == "footer"][0]{ title, description, copyright, socials, address, contact }`);
+} | null>(
+  `*[_type == "footer" && language == $lang][0]{ title, description, copyright, socials, address, contact }`,
+  { lang },
+);
 
 // Title & description: Sanity footer > call-to-action section > fallback
 const ctaEntry = await getEntryCTM(
@@ -70,12 +76,17 @@ const email = sanityFooter?.contact?.email ?? configEmail;
 // Social links: Sanity footer socials (image URLs) > config (React icon names)
 const socialList =
   sanityFooter?.socials && sanityFooter.socials.length > 0
-    ? sanityFooter.socials.map((item, i) => ({
-        enable: true,
-        label: `Social ${i + 1}`,
-        url: item.url ?? "#",
-        icon: item.icon ? urlFor(item.icon).width(32).height(32).url() : "",
-      }))
+    ? sanityFooter.socials.map(
+        (
+          item: { icon?: { asset?: { _ref?: string } }; url?: string },
+          i: number
+        ) => ({
+          enable: true,
+          label: `Social ${i + 1}`,
+          url: item.url ?? "#",
+          icon: item.icon ? urlFor(item.icon).width(32).height(32).url() : "",
+        })
+      )
     : social.main.filter((s) => s.enable);
 ---
 

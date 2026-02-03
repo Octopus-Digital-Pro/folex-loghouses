@@ -48,15 +48,17 @@ export async function getStaticPaths() {
     (langObj) => !isDefaultLocaleNoPrefix(langObj.languageCode),
   );
 
-  // 1) Sanity _type "page" slugs × non-default locales
-  const sanitySlugs = await sanity.fetch<{ slug: string }[]>(
-    `*[_type == "page" && defined(slug.current)]{ "slug": slug.current }`,
+  // 1) Sanity _type "page" slugs × non-default locales (only paths that exist per language)
+  const sanityPages = await sanity.fetch<{ slug: string; language: string }[]>(
+    `*[_type == "page" && defined(slug.current)]{ "slug": slug.current, language }`,
   );
-  for (const { slug: s } of sanitySlugs ?? []) {
+  for (const { slug: s, language: docLang } of sanityPages ?? []) {
     for (const langObj of localesWithPrefix) {
-      pathEntries.push({
-        params: { lang: langObj.languageCode, slug: s },
-      });
+      if (docLang === langObj.languageCode) {
+        pathEntries.push({
+          params: { lang: langObj.languageCode, slug: s },
+        });
+      }
     }
   }
 
@@ -79,10 +81,10 @@ export async function getStaticPaths() {
 const resolvedLang =
   lang && supportedLanguages.some((l) => l.languageCode === lang) ? lang : config.settings.multilingual.defaultLanguage;
 
-// Try Sanity _type "page" first
+// Try Sanity _type "page" first (filter by current locale)
 const sanityPage = await sanity.fetch(
   /* groq */ `
-  *[_type == "page" && slug.current == $slug][0]{
+  *[_type == "page" && language == $lang && slug.current == $slug][0]{
     title,
     "slug": slug.current,
     seo,
@@ -97,7 +99,7 @@ const sanityPage = await sanity.fetch(
     }
   }
 `,
-  { slug },
+  { lang: resolvedLang, slug },
 );
 
 let ctmPage: any = null;

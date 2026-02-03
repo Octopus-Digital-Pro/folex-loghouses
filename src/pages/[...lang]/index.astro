@@ -4,6 +4,7 @@ import { generatePaths } from "@/lib/utils/i18nUtils";
 import { sanity } from "@/lib/sanityClient";
 import { urlFor } from "@/lib/sanityImage";
 import { portableTextToHtml } from "@/lib/portableText";
+import config from ".astro/config.generated.json" with { type: "json" };
 
 import Clients from "@/components/sections/Clients.astro";
 import BannerAgencyStartup from "@/components/sections/Banner.astro";
@@ -15,17 +16,25 @@ export function getStaticPaths() {
   return generatePaths();
 }
 
-// Fetch home page from Sanity (include seo for meta/OG)
+// Current locale: from i18n (e.g. / → en, /hu/ → hu)
+const lang = Astro.currentLocale ?? config.settings.multilingual.defaultLanguage;
+
+// Fetch home page from Sanity by language (one homePage per locale)
 const page = await sanity.fetch(
-  `*[_type == "homePage" && slug.current == $slug][0]{
+  `*[_type == "homePage" && language == $lang][0]{
     title,
     "slug": slug.current,
+    language,
     seo,
     sections[],
     ...
   }`,
-  { slug: "/" },
+  { lang },
 );
+
+if (!page) {
+  throw new Error(`Home page not found for locale: ${lang}`);
+}
 
 const hero =
   page?.sections?.find((section: any) => section._type === "hero") ?? null;
@@ -193,3 +202,11 @@ const ogImageUrl =
   <PortfolioSection content={accordionContent ?? undefined} />
   <PricingSection />
 </Base>
+
+
+
+
+<pre style="position:fixed;bottom:0;left:0;background:#fff;padding:8px;z-index:9999;font-size:12px;">
+  {JSON.stringify({ locale: Astro.currentLocale, path: Astro.url.pathname }, null, 2)}
+  </pre>
+  
